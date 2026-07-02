@@ -1,1 +1,70 @@
+name: HK1-Armbian-Stage1
 
+on:
+  workflow_dispatch:
+
+env:
+  TZ: Asia/Singapore
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+
+    # =========================
+    # 1. Checkout
+    # =========================
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # =========================
+    # 2. System deps
+    # =========================
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y git curl wget xz-utils build-essential
+
+    # =========================
+    # 3. Clone Armbian build system
+    # =========================
+    - name: Clone Armbian
+      run: |
+        git clone --depth=1 https://github.com/armbian/build.git armbian
+
+    # =========================
+    # 4. Prepare environment
+    # =========================
+    - name: Prepare build env
+      run: |
+        cd armbian
+        chmod +x compile.sh
+
+    # =========================
+    # 5. Build HK1 image (default kernel for now)
+    # =========================
+    - name: Build Armbian image
+      run: |
+        cd armbian
+
+        ./compile.sh \
+          BOARD=hk1-rbox-k8s \
+          BRANCH=current \
+          RELEASE=bookworm \
+          BUILD_MINIMAL=no \
+          BUILD_DESKTOP=no \
+          KERNEL_CONFIGURE=no
+
+    # =========================
+    # 6. Upload artifact
+    # =========================
+    - name: Upload image
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: hk1-stage1
+        files: armbian/output/images/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
